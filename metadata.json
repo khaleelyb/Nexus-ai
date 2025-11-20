@@ -1,0 +1,7 @@
+{
+  "name": "Nexus Code Studio",
+  "description": "A next-generation AI coding assistant combining Gemini's reasoning with a Claude-like interface. Features a virtual file system, GitHub repository import, advanced refactoring tools, and real-time code generation.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
