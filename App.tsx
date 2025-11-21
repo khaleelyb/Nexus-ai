@@ -5,7 +5,7 @@ import { FileTree } from './components/FileTree';
 import { Editor } from './components/Editor';
 import { ChatMessage } from './components/ChatMessage';
 import { GitHubModal } from './components/GitHubModal';
-import { Send, Sidebar as SidebarIcon, LayoutTemplate, Loader2, Maximize2, MessageSquare, Mic, MicOff, Activity, Key, ExternalLink, Zap } from 'lucide-react';
+import { Send, Sidebar as SidebarIcon, LayoutTemplate, Loader2, Maximize2, MessageSquare, Mic, MicOff, Activity } from 'lucide-react';
 import { detectLanguage, sortFiles } from './utils/fileUtils';
 import { APP_NAME } from './constants';
 import { createBlob, decode, decodeAudioData } from './utils/audioUtils';
@@ -13,7 +13,6 @@ import { LiveServerMessage } from '@google/genai';
 
 const App: React.FC = () => {
   // State
-  const [hasApiKey, setHasApiKey] = useState(false);
   const [files, setFiles] = useState<VirtualFile[]>([]);
   const [activeFile, setActiveFile] = useState<VirtualFile | null>(null);
   const [messages, setMessages] = useState<Message[]>([
@@ -60,42 +59,17 @@ How can I assist you today?`,
       filesRef.current = files;
   }, [files]);
 
-  // API Key Check
+  // Initialize Service immediately
   useEffect(() => {
-    const checkApiKey = async () => {
-      const win = window as any;
-      if (win.aistudio) {
-        const hasKey = await win.aistudio.hasSelectedApiKey();
-        setHasApiKey(hasKey);
-      }
-    };
-    checkApiKey();
-  }, []);
-
-  // Initialize Service only when key is present
-  useEffect(() => {
-    if (hasApiKey && process.env.API_KEY) {
+    if (process.env.API_KEY) {
       geminiRef.current = new GeminiService(process.env.API_KEY);
     }
-  }, [hasApiKey]);
+  }, []);
 
   // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  const handleConnectApiKey = async () => {
-    const win = window as any;
-    if (win.aistudio) {
-      try {
-        await win.aistudio.openSelectKey();
-        // Check again after selection (mitigate race condition)
-        setHasApiKey(true);
-      } catch (error) {
-        console.error("API Key selection failed", error);
-      }
-    }
-  };
 
   // Tool Executor
   const handleToolCall = async (name: string, args: any): Promise<any> => {
@@ -421,41 +395,6 @@ How can I assist you today?`,
       };
       setMessages(prev => [...prev, systemMsg]);
   };
-
-  if (!hasApiKey) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-[#0f0f11] text-white">
-        <div className="max-w-md w-full p-8 bg-[#18181b] border border-[#27272a] rounded-2xl shadow-2xl text-center">
-          <div className="w-16 h-16 bg-blue-600/20 text-blue-500 rounded-xl flex items-center justify-center mx-auto mb-6">
-            <Zap size={32} />
-          </div>
-          <h1 className="text-2xl font-bold mb-2 tracking-tight">{APP_NAME}</h1>
-          <p className="text-gray-400 mb-8 text-sm leading-relaxed">
-            Experience next-generation AI coding assistance powered by Gemini 2.5 Flash and Gemini 3 Pro. 
-            Connect your Google AI Studio API key to get started.
-          </p>
-          
-          <button 
-            onClick={handleConnectApiKey}
-            className="w-full py-3 bg-white text-black rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 mb-6"
-          >
-            <Key size={18} />
-            Connect Google AI Key
-          </button>
-
-          <a 
-            href="https://ai.google.dev/gemini-api/docs/billing" 
-            target="_blank" 
-            rel="noreferrer"
-            className="text-xs text-gray-500 hover:text-gray-300 flex items-center justify-center gap-1 transition-colors"
-          >
-            <span>Get a paid API key</span>
-            <ExternalLink size={10} />
-          </a>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex h-screen bg-[#0f0f11] text-white overflow-hidden font-sans selection:bg-blue-500/30">
