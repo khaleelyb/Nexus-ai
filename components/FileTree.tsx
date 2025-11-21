@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { VirtualFile } from '../types';
-import { FileCode, File, Folder, Plus, Upload, Github, Trash2, DownloadCloud } from 'lucide-react';
+import { FileCode, File, Folder, Plus, Upload, Github, Trash2, DownloadCloud, FolderInput } from 'lucide-react';
+import JSZip from 'jszip';
 
 interface FileTreeProps {
   files: VirtualFile[];
@@ -9,6 +10,7 @@ interface FileTreeProps {
   onDeleteFile: (path: string) => void;
   onAddFile: () => void;
   onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onUploadFolder: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onGithubImport: () => void;
   connectedRepo: string | null;
 }
@@ -20,10 +22,37 @@ export const FileTree: React.FC<FileTreeProps> = ({
   onDeleteFile,
   onAddFile,
   onUpload,
+  onUploadFolder,
   onGithubImport,
   connectedRepo
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDownloadZip = async () => {
+    if (files.length === 0) return;
+
+    const zip = new JSZip();
+    files.forEach(file => {
+      // Ensure we don't have absolute paths breaking the zip structure
+      const path = file.path.startsWith('/') ? file.path.slice(1) : file.path;
+      zip.file(path, file.content);
+    });
+
+    try {
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `nexus-project-${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to generate zip:", err);
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-[#121214] border-r border-[#27272a] w-64 flex-shrink-0">
@@ -31,12 +60,27 @@ export const FileTree: React.FC<FileTreeProps> = ({
       <div className="p-4 border-b border-[#27272a] flex items-center justify-between">
         <h2 className="text-xs font-bold text-gray-400 tracking-widest uppercase">Explorer</h2>
         <div className="flex gap-1">
-             <button 
+          <button 
             onClick={() => fileInputRef.current?.click()}
             className="p-1.5 hover:bg-[#27272a] rounded-md text-gray-400 hover:text-white transition-colors"
             title="Upload Files"
           >
             <Upload size={14} />
+          </button>
+          <button 
+            onClick={() => folderInputRef.current?.click()}
+            className="p-1.5 hover:bg-[#27272a] rounded-md text-gray-400 hover:text-white transition-colors"
+            title="Upload Folder"
+          >
+            <FolderInput size={14} />
+          </button>
+          <button 
+            onClick={handleDownloadZip}
+            className={`p-1.5 hover:bg-[#27272a] rounded-md transition-colors ${files.length === 0 ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:text-white'}`}
+            title="Download Project (ZIP)"
+            disabled={files.length === 0}
+          >
+            <DownloadCloud size={14} />
           </button>
           <button 
             onClick={onAddFile}
@@ -55,6 +99,15 @@ export const FileTree: React.FC<FileTreeProps> = ({
         ref={fileInputRef}
         className="hidden"
         onChange={onUpload}
+      />
+      
+      <input
+        type="file"
+        multiple
+        {...({ webkitdirectory: "", directory: "" } as any)}
+        ref={folderInputRef}
+        className="hidden"
+        onChange={onUploadFolder}
       />
 
       {/* File List */}
